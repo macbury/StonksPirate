@@ -1,8 +1,8 @@
 # README
 
-* Visit tradingview
-* fetch stonk
+ARRRRRRR! na pochybel szkorbutowi, pulluj dane do influxdb!
 
+# Bla bla bla ignoe
 VNC password is secret
 
 {

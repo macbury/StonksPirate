@@ -3,6 +3,7 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 ruby '3.0.0'
 
+gem 'influxdb'
 gem 'pry'
 gem 'pry-inline'
 gem 'pry-rails'

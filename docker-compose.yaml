@@ -52,11 +52,11 @@ services:
     volumes:
       - influx-data:/var/lib/influxdb
     environment: 
-      INFLUXDB_REPORTING_DISABLED=false
-      INFLUXDB_DB=stonks
-      INFLUXDB_HTTP_AUTH_ENABLED=false
-      INFLUXDB_ADMIN_USER=stonks
-      INFLUXDB_ADMIN_PASSWORD=stonks
+      - INFLUXDB_REPORTING_DISABLED=false
+      - INFLUXDB_DB=stonks
+      - INFLUXDB_HTTP_AUTH_ENABLED=false
+      - INFLUXDB_ADMIN_USER=stonks
+      - INFLUXDB_ADMIN_PASSWORD=stonks
   grafana:
     image: grafana/grafana:8.0.5
     ports:

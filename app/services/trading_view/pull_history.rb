@@ -6,6 +6,9 @@ module TradingView
       super(browser: browser)
       @market = market
       @ticker = ticker
+
+      @time_precision = 'h'
+      @influxdb = InfluxDB::Client.new url: ENV.fetch("INFLUXDB_URL")
     end
 
     def call
@@ -14,12 +17,29 @@ module TradingView
       sleep 15
       scroll_bottom
       
-      timeseries(received_data.find { |data| is_timeseries?(data) })
+      data = timeseries(received_data.find { |data| is_timeseries?(data) }).map do |row|
+        {
+          series: series,
+          values: { value: row[:value] },
+          tags: { currency: currency },
+          timestamp: InfluxDB.convert_timestamp(row[:timestamp], time_precision)
+        }
+      end
+
+      influxdb.write_points(data, time_precision)
     end
 
     private 
 
-    attr_reader :market, :ticker
+    attr_reader :market, :ticker, :influxdb, :time_precision
+
+    def series
+      "#{market}:#{ticker}"
+    end
+
+    def currency
+      'PLN'
+    end
 
     def url
       "https://www.tradingview.com/symbols/#{market}-#{ticker}"
@@ -61,11 +81,11 @@ module TradingView
       data.dig('p', 1, 'sds_1', 's').map do |d|
         v = d['v']
         {
-          timestamp: v[0],
+          timestamp: Time.at(v[0]),
           opening: v[1],
           highest: v[2],
           lowest: v[3],
-          price: v[4],
+          value: v[4],
           volume: v[5]
         }
       end
