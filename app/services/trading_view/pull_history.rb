@@ -41,7 +41,6 @@ module TradingView
     end
 
     def write_last_fetched_data_points(time_series)
-      binding.pry
       data = time_series.map do |row|
         {
           series: series,
