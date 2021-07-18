@@ -21,6 +21,10 @@ module BrowserHelper
     browser.execute_script 'window.scrollTo(0, document.body.scrollHeight)'
   end
 
+  def scroll_into_view(class_name)
+    browser.execute_script "window.scrollTo(0, document.getElementsByClassName('#{class_name}')[0].offsetTop)"
+  end
+
   def find_element(timeout: 10, **args)
     wait(timeout).until { browser.find_element(args) }
   end

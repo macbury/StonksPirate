@@ -6,6 +6,7 @@ class BrowserService < Service
 
   def self.call(**args, &block)
     BROWSER_POOL.with do |browser|
+      browser.get('about:blank')
       super(**args.merge(browser: browser, &block))
     end
   end

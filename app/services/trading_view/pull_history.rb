@@ -1,6 +1,7 @@
 module TradingView
   class PullHistory < BrowserService
     DELIMETER = /~m~\d+~m~/i
+    RANGES_TO_FETCH = ['All', '5Y', '1Y', '1M']
 
     def initialize(browser:, market:, ticker:)
       super(browser: browser)
@@ -13,14 +14,38 @@ module TradingView
 
     def call
       browser.get(url)
-      
       sleep 15
-      scroll_bottom
       
-      data = timeseries(received_data.find { |data| is_timeseries?(data) }).map do |row|
+      scroll_into_view('chart-toolbar')
+
+      RANGES_TO_FETCH.each do |range|
+        range_buttons[range].click
+        sleep 5
+      end
+
+      received_data.each do |data|
+        next unless series = is_timeseries?(data)
+
+        write_last_fetched_data_points(series)
+      end
+    end
+
+    private 
+
+    attr_reader :market, :ticker, :influxdb, :time_precision
+
+    def range_buttons
+      find_elements(css: 'div[data-name="date-ranges-tabs"] .apply-common-tooltip').each_with_object({}) do |button, r|
+        r[button.text.strip] = button
+      end
+    end
+
+    def write_last_fetched_data_points(time_series)
+      binding.pry
+      data = time_series.map do |row|
         {
           series: series,
-          values: { value: row[:value] },
+          values: { value: row[:value], volume: row[:volume], highest: row[:highest], lowest: row[:lowest], opening: row[:opening] },
           tags: { currency: currency },
           timestamp: InfluxDB.convert_timestamp(row[:timestamp], time_precision)
         }
@@ -29,34 +54,24 @@ module TradingView
       influxdb.write_points(data, time_precision)
     end
 
-    private 
-
-    attr_reader :market, :ticker, :influxdb, :time_precision
-
     def series
       "#{market}:#{ticker}"
     end
 
     def currency
-      'PLN'
+      @currency ||= find_text(css: '.tv-symbol-price-quote__currency')
     end
 
     def url
       "https://www.tradingview.com/symbols/#{market}-#{ticker}"
     end
 
-    def click_on_all_date_range
-      find_elements(css: 'div[data-name="date-ranges-tabs"] .apply-common-tooltip').last.click
-    end
-
     def received_data
-      received_websocket_events.flat_map { |event| split_data(event.dig('params', 'response', 'payloadData')) }.compact
+      received_websocket_events.reverse.flat_map { |event| split_data(event.dig('params', 'response', 'payloadData')) }.compact
     end
 
     def split_data(payload_data)
       payload_data.split(DELIMETER).reject { |e| e.size < 10 }.map { |data| JSON.parse(data) }
-    rescue JSON::ParserError => e
-      binding.pry
     end
 
     def is_timeseries?(data)
@@ -78,7 +93,9 @@ module TradingView
     # },
     #
     def timeseries(data)
-      data.dig('p', 1, 'sds_1', 's').map do |d|
+      return unless data
+
+      data.dig('p', 1, 'sds_1', 's')&.map do |d|
         v = d['v']
         {
           timestamp: Time.at(v[0]),
